@@ -1,42 +1,54 @@
 mod api;
 mod cli;
 
-use clap::{command, Parser};
+use clap::Parser;
 use serde::Deserialize;
-use std::{collections::HashMap, io::stdin};
-use termion::input::TermRead;
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    io::{stdin, stdout},
+};
+use termion::{input::TermRead, raw::IntoRawMode};
+
+use crate::{
+    api::open_sequence,
+    cli::{Args, Cli},
+};
 
 static OEIS_URL: &str = "https://oeis.org";
 
-#[derive(Parser)]
-#[command(
-    author = "Alistair Pattison",
-    about = "A command line interface to the OEIS."
-)]
-struct Args {
-    sequence: Vec<String>,
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // parse command line arguments
     let args = Args::parse();
 
     if args.sequence.is_empty() {
-        println!("Sequence cannot be empty.");
+        return Err("Sequence cannot be empty.".into());
+    }
+
+    // parse command line args and load CLI
+    let _stdout = stdout().into_raw_mode()?;
+    let mut cli = Cli::from_args(&args)?;
+
+    // handle non-interactive options
+    if args.online {
+        open::that(format!(
+            "{OEIS_URL}/search?q={}",
+            &args.sequence.join(",")
+        ))?;
+        return Ok(());
+    }
+    if args.lucky {
+        open_sequence(cli.sequences[0].id);
         return Ok(());
     }
 
-    // hide cursor
     print!("{}", termion::cursor::Hide);
-
-    let mut cli = cli::Cli::from_args(args)?;
 
     cli.print_cli();
 
     for key in stdin().keys() {
-        match cli.process_keystroke(key?)? {
+        match cli.process_keystroke(key?) {
             Some(_) => cli.print_cli(),
-            None => break,
+            None => break, // user exited program
         };
     }
 
@@ -51,7 +63,7 @@ pub struct Sequence {
     /// The OEIS id of the sequence stored as an integer.
     /// For example, `A000040` (the primes) is stored as the integer `40`.
     #[serde(rename = "number")]
-    pub(crate) id: i32,
+    pub(crate) id: usize,
 
     /// The name of the sequence.
     pub(crate) name: String,
@@ -71,4 +83,16 @@ pub struct Sequence {
 
     #[serde(flatten)]
     pub(crate) _extra: HashMap<String, serde_json::Value>,
+}
+
+impl Display for Sequence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "A{:0>6}: {}", self.id, self.name)
+    }
+}
+
+impl Sequence {
+    fn oeis_id(&self) -> String {
+        format!("A{:0>6}", self.id)
+    }
 }

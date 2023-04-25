@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde::{de::Error, Deserialize};
 
 use crate::{Sequence, OEIS_URL};
@@ -12,9 +13,10 @@ struct Response {
 }
 
 pub(crate) fn search(
-    query: &str,
+    query: &[i32],
 ) -> Result<Vec<Sequence>, Box<dyn std::error::Error>> {
-    let url = format!("{OEIS_URL}/search?q={query}&fmt=json");
+    let url =
+        format!("{OEIS_URL}/search?q={}&fmt=json", query.iter().join(","));
     let Response { results, _extra } = reqwest::blocking::get(url)?.json()?;
 
     Ok(results)
@@ -30,4 +32,9 @@ where
         .split(',')
         .map(|x| x.parse().map_err(D::Error::custom))
         .collect()
+}
+
+pub(crate) fn open_sequence(id: usize) {
+    let url = format!("{}/A{:0>6}", OEIS_URL, id);
+    open::that(url).expect("Unable to open sequence on OEIS.");
 }

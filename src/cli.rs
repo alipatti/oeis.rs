@@ -1,105 +1,117 @@
 use std::{
     cmp::{max, min},
-    io::{stdout, Stdout, Write},
+    io::{stdout, Write},
 };
 
+use clap::{command, Parser};
 use colored::Colorize;
 use itertools::Itertools;
 use termion::{
     color::{self, Fg},
     cursor::{self, DetectCursorPos},
     event::Key,
-    raw::{IntoRawMode, RawTerminal},
+    raw::IntoRawMode,
     style, terminal_size,
 };
+use textwrap::Options;
 
-use crate::{api, Args, Sequence, OEIS_URL};
+use crate::{
+    api::{self, open_sequence},
+    Sequence,
+};
+
+static N_TERMS: usize = 15; // number of terms of the sequence to show
+
+#[derive(Parser)]
+#[command(
+    author,
+    about,
+    long_about = "A command line interface to the OEIS.\r\n\r\nUse the arrow keys to navigate the UI and the enter key to view the sequence on the OEIS. Press esc or q to exit."
+)]
+pub(crate) struct Args {
+    pub(crate) sequence: Vec<String>,
+
+    /// Immediately go to the OEIS page for the first result.
+    #[arg(short, long)]
+    pub(crate) lucky: bool,
+
+    /// Search on the OEIS website.
+    #[arg(short, long)]
+    pub(crate) online: bool,
+}
 
 pub(crate) struct Cli {
     pub(crate) width: usize,
-    pub(crate) cursor_home: (u16, u16),
-    pub(crate) stdout: RawTerminal<Stdout>,
     pub(crate) selected_index: usize,
     pub(crate) sequences: Vec<Sequence>,
+    origin: (u16, u16),
 }
 
 impl Cli {
     pub(crate) fn from_args(
-        args: Args,
+        args: &Args,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let query = args.sequence.join(",");
-        let mut stdout = stdout().into_raw_mode()?;
-        let cursor_home = stdout.cursor_pos()?;
+        let query: Vec<i32> = args
+            .sequence
+            .iter()
+            .map(|x| x.parse())
+            .collect::<Result<_, _>>()?;
 
-        // prepare stdout/stdin
+        let sequences = api::search(&query)?;
 
         Ok(Cli {
-            stdout,
-            cursor_home,
+            origin: stdout().into_raw_mode()?.cursor_pos()?,
             width: terminal_size()?.0 as usize,
             selected_index: 0,
-            sequences: api::search(&query)?,
+            sequences,
         })
     }
 
     pub(crate) fn print_cli(&mut self) {
         // reset cursor
-        print!("{}", cursor::Goto(self.cursor_home.0, self.cursor_home.1));
-        self.stdout.flush().unwrap();
+        print!("{}", cursor::Goto(self.origin.0, self.origin.1 + 1),);
+        stdout().flush().unwrap();
 
-        // print sequences and abbreviated titles
         for (i, seq) in self.sequences.iter().enumerate() {
             let is_selected = i == self.selected_index;
             self.print_menu_item(seq, is_selected);
         }
 
-        self.print_selected_sequence_info();
-        self.stdout.flush().unwrap();
+        // print info for selected sequence
+        println!("{}", termion::clear::AfterCursor);
+        self.print_full_sequence_info();
     }
 
     pub(crate) fn print_menu_item(&self, seq: &Sequence, selected: bool) {
         let prefix = if selected {
-            format!(" > {}{}", style::Bold, Fg(color::Green))
+            format!("> {}{}", style::Bold, Fg(color::Green))
         } else {
-            "   ".to_string()
+            "  ".to_string()
         };
 
-        let oeis_id = format!("A{:0>6}", seq.id);
-        let title = {
-            let description_width = self.width - 20;
-
-            let ellipsis = if seq.name.len() > description_width {
-                "..."
-            } else {
-                ""
-            };
-            format!("{:.description_width$}{ellipsis}", seq.name,)
+        let seq_print_width = self.width - "> ...".len();
+        let ellipsis = if seq.to_string().len() > seq_print_width {
+            "..."
+        } else {
+            ""
         };
 
         print!(
-            "{}{prefix}{oeis_id}: {title}{}\r\n",
+            "{}{prefix}{:.seq_print_width$}{ellipsis}{}\r\n",
             termion::clear::CurrentLine,
+            seq.to_string(),
             style::Reset
         );
     }
 
-    pub(crate) fn process_keystroke(
-        &mut self,
-        key: Key,
-    ) -> Result<Option<()>, Box<dyn std::error::Error>> {
-        Ok(match key {
+    pub(crate) fn process_keystroke(&mut self, key: Key) -> Option<()> {
+        match key {
             // exit
             Key::Esc | Key::Ctrl('c') | Key::Char('q') => None,
 
             // go to OEIS page online
             Key::Char('\n') => {
-                self.selected_sequence();
-                let url = format!(
-                    "{}/A{:0>6}",
-                    OEIS_URL,
-                    self.selected_sequence().id
-                );
-                open::that(url)?;
+                open_sequence(self.selected_sequence().id);
                 None
             }
 
@@ -117,29 +129,34 @@ impl Cli {
 
             // unknown input. sound bell
             _ => {
-                write!(self.stdout, "{}", 7 as char)?;
+                print!("{}", 7 as char);
                 Some(())
             }
-        })
+        }
     }
 
-    pub(crate) fn print_selected_sequence_info(&self) {
-        // print information about the selected sequence
-        let selected_sequence = &self.sequences[self.selected_index];
-        print!(
-            "\r\n{:-^width$}\r\n",
-            format!(" A{:0>6} ", selected_sequence.id).bold().cyan(),
-            width = self.width,
-        ); // header
+    /// Prints information about the selected sequence.
+    pub(crate) fn print_full_sequence_info(&self) {
+        let seq = self.selected_sequence();
 
+        print!("{}{}\r\n", "Sequence: ".cyan().bold(), seq.oeis_id());
+
+        // print the full name of the sequence
+        let header = "Description: ".cyan().bold().to_string();
+        let wrap_options = Options::new(self.width).initial_indent(&header);
         print!(
-            "{}{}...",
-            termion::clear::CurrentLine,
-            &selected_sequence.values[..15]
-                .iter()
-                .map(|x| x.to_string())
-                .join(", ")
+            "{}\r\n",
+            textwrap::wrap(&seq.name, wrap_options).join("\r\n"),
         );
+
+        // print the first few sequence values
+        print!(
+            "{} {}...\r\n",
+            "Sequence:".cyan().bold(),
+            seq.values.iter().take(N_TERMS).join(", "),
+        );
+
+        stdout().flush().unwrap();
     }
 
     pub(crate) fn selected_sequence(&self) -> &Sequence {
