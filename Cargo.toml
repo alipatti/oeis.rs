@@ -1,5 +1,6 @@
 [package]
 name = "oeis"
+description = "A command line interface to the OEIS"
 version = "0.1.0"
 edition = "2021"
 
