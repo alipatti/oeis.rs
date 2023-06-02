@@ -23,6 +23,18 @@ Options:
           Print help (see a summary with '-h')
 ```
 
+## Installation
+
+```bash
+# download
+❯ git clone https://github.com/alipatti/oeis.git
+
+# install
+❯ cd oeis && cargo install --path .
+```
+
+At the moment, you will need a recent rust compiler. If this project gains enough traction, I'll distribute binaries so this isn't the case (...but I have a sneaking suspicion that this will never be popular enough for that to be necessary).
+
 ## Examples
 
 You can use the CLI interactively:
