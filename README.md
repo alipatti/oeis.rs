@@ -7,10 +7,10 @@ Ever needed to search the [OEIS](https://oeis.org/A000924) from the command line
 You can use the CLI interactively:
 
 <!--
-ffmpeg -i demo.mov -ss 3 -t 4 -loop 0 -vf fps=5 demo.gif
+ffmpeg -i demo.mov -loop 0 -vf fps=10 demo.gif
 -->
 
-![Interactivity demonstration](demo.gif)
+![oeis](https://github.com/alipatti/oeis.rs/assets/78563685/a3e41454-a945-497a-979a-68d1cb92ef47)
 
 Or non-interactively:
 
