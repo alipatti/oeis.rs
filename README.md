@@ -1,26 +1,25 @@
 # OEIS
 
-```text
-❯ oeis --help
-A command line interface to the OEIS.
+Ever needed to search the [OEIS](https://oeis.org/A000924) from the command line? Yeah... me neither.
 
-Use the arrow keys to navigate the UI and the enter key to view the sequence on the OEIS. Press esc or q to exit.
+## Examples
 
-Usage: oeis [OPTIONS] [SEQUENCE]...
+You can use the CLI interactively:
 
-Arguments:
-  [SEQUENCE]...
+<!--
+ffmpeg -i demo.mov -ss 3 -t 4 -loop 0 -vf fps=5 demo.gif
+-->
 
+![Interactivity demonstration](demo.gif)
 
-Options:
-  -l, --lucky
-          Immediately go to the OEIS page for the first result
+Or non-interactively:
 
-  -o, --online
-          Search on the OEIS website
+```bash
+# Search for sequences on the OEIS website
+❯ oeis 2 3 5 7 --online
 
-  -h, --help
-          Print help (see a summary with '-h')
+# Go directly to the OEIS page for my favorite sequence
+❯ oeis 1 1 1 1 --lucky
 ```
 
 ## Installation
@@ -33,24 +32,4 @@ Options:
 ❯ cd oeis && cargo install --path .
 ```
 
-At the moment, you will need a recent rust compiler. If this project gains enough traction, I'll distribute binaries so this isn't the case (...but I have a sneaking suspicion that this will never be popular enough for that to be necessary).
-
-## Examples
-
-You can use the CLI interactively:
-
-<!--
-ffmpeg -i demo.mov -ss 3 -t 4 -loop 0 -vf fps=5 demo.gif
--->
-
-![Interactivity demonstration](demo.gif)
-
-...or non-interactively:
-
-```bash
-# Search for sequences on the OEIS website
-❯ oeis 2 3 5 7 --online
-
-# Go directly to the OEIS page for my favorite sequence
-❯ oeis 1 1 1 1 --lucky
-```
+At the moment, you'll need a recent rust compiler. I'll distribute binaries if there's enough demand (...but I have a sneaking suspicion that there never will be).
