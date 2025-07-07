@@ -4,7 +4,6 @@ mod cli;
 use clap::Parser;
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
     fmt::Display,
     io::{stdin, stdout},
 };
