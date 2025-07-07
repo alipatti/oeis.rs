@@ -25,11 +25,7 @@ Or non-interactively:
 ## Installation
 
 ```bash
-# download
-❯ git clone https://github.com/alipatti/oeis.git
-
-# install
-❯ cd oeis && cargo install --path .
+❯ cargo install --git https://github.com/alipatti/oeis.rs
 ```
 
 At the moment, you'll need a recent rust compiler. I'll distribute binaries if there's enough demand (...but I have a sneaking suspicion that there never will be).
