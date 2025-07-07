@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Sequence {
     /// The OEIS id of the sequence stored as an integer.
     /// For example, `A000040` (the primes) is stored as the integer `40`.
@@ -74,15 +74,6 @@ pub struct Sequence {
         rename = "data"
     )]
     pub(crate) values: Vec<i64>,
-
-    #[serde(rename = "comment")]
-    pub(crate) _comments: Option<Vec<String>>,
-
-    #[serde(rename = "reference")]
-    pub(crate) _references: Option<Vec<String>>,
-
-    #[serde(flatten)]
-    pub(crate) _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Display for Sequence {
