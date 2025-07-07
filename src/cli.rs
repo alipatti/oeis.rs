@@ -117,11 +117,11 @@ impl Cli {
 
             // change selection
             // (strange incrementing to deal with usize not allowing negatives)
-            Key::Up | Key::Char('k') => {
+            Key::Up | Key::Char('k') | Key::Ctrl('p') => {
                 self.selected_index = max(1, self.selected_index) - 1;
                 Some(())
             }
-            Key::Down | Key::Char('j') => {
+            Key::Down | Key::Char('j') | Key::Ctrl('n') => {
                 self.selected_index =
                     min(self.selected_index + 1, self.sequences.len() - 1);
                 Some(())
